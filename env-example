@@ -1,0 +1,29 @@
+# Supabase Configuration
+SUPABASE_URL=thisisjustexampleboyorgirlc:
+SUPABASE_ANON_KEY=thisisjustexampleboyorgirlc
+SUPABASE_SERVICE_ROLE_KEY=thisisjustexampleboyorgirlc
+
+# Angular Frontend Environment Variables (must start with NG_APP_)
+NG_APP_SUPABASE_URL=thisisjustexampleboyorgirlc:
+NG_APP_SUPABASE_ANON_KEY=thisisjustexampleboyorgirlc:
+NG_APP_API_URL=http://localhost:3000/api/v1
+
+
+# Database Configuration (Supabase provides this)
+DATABASE_URL=thisisjustexampleboyorgirlc
+DB_HOST=thisisjustexampleboyorgirlc
+DB_PORT=thisisjustexampleboyorgirlc
+DB_USERNAME=postgres
+DB_PASSWORD=thisisjustexampleboyorgirlc
+DB_DATABASE=postgres
+
+# JWT Configuration
+JWT_SECRET=thisisjustexampleboyorgirlc
+JWT_EXPIRES_IN=7d
+
+# API Configuration
+API_PORT=3000
+API_PREFIX=api/v1
+
+# Frontend Configuration
+FRONTEND_URL=http://localhost:4200

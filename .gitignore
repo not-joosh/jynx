@@ -44,3 +44,12 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 
 .angular
+environment.ts
+environment.prod.ts
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+!.env.example

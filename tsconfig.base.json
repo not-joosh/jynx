@@ -14,7 +14,19 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@api/*": ["apps/api/src/*"],
+      "@challenge/auth": ["libs/auth/src/index.ts"],
+      "@challenge/auth/frontend": ["libs/auth/src/frontend.index.ts"],
+      "@challenge/data": ["libs/data/src/index.ts"],
+      "@challenge/data/backend": ["libs/data/src/backend.index.ts"],
+      "@challenge/ui": ["libs/ui/src/index.ts"],
+      "@challenge/utils": ["libs/utils/src/index.ts"],
+      "@core/*": ["apps/dashboard/src/app/core/*"],
+      "@dashboard/*": ["apps/dashboard/src/*"],
+      "@features/*": ["apps/dashboard/src/app/features/*"],
+      "@shared/*": ["apps/dashboard/src/app/shared/*"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
