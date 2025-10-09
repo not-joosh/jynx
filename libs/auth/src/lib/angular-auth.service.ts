@@ -21,11 +21,20 @@ export class AngularAuthService {
       .pipe(
         tap(response => {
           this.setToken(response.access_token);
+          
+          // Extract role from JWT token
+          const payload = JSON.parse(atob(response.access_token.split('.')[1]));
+          console.log('🔍 Login JWT payload:', payload);
+          
           const user: UserDto = {
             ...response.user,
+            role: payload.role || 'owner', // Include role from JWT
+            organizationId: payload.organizationId,
             createdAt: new Date(),
             updatedAt: new Date()
           };
+          
+          console.log('🔍 Setting current user:', user);
           this.currentUserSubject.next(user);
         })
       );
@@ -36,11 +45,20 @@ export class AngularAuthService {
       .pipe(
         tap(response => {
           this.setToken(response.access_token);
+          
+          // Extract role from JWT token
+          const payload = JSON.parse(atob(response.access_token.split('.')[1]));
+          console.log('🔍 Register JWT payload:', payload);
+          
           const user: UserDto = {
             ...response.user,
+            role: payload.role || 'owner', // Include role from JWT
+            organizationId: payload.organizationId,
             createdAt: new Date(),
             updatedAt: new Date()
           };
+          
+          console.log('🔍 Setting current user:', user);
           this.currentUserSubject.next(user);
         })
       );
@@ -85,15 +103,20 @@ export class AngularAuthService {
       if (token) {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('🔍 JWT payload:', payload);
+          
           this.currentUserSubject.next({
             id: payload.sub,
             email: payload.email,
-            firstName: 'User',
-            lastName: 'Name',
+            firstName: payload.firstName || 'User',
+            lastName: payload.lastName || 'Name',
+            role: payload.role || 'owner', // Extract role from JWT
+            organizationId: payload.organizationId,
             createdAt: new Date(),
             updatedAt: new Date()
           });
-        } catch {
+        } catch (error) {
+          console.error('❌ Error parsing JWT token:', error);
           this.logout();
         }
       }
@@ -109,10 +132,18 @@ export class AngularAuthService {
    */
   hasPermission(permission: Permission, resourceOwnerId?: string): boolean {
     const currentUser = this.getCurrentUser();
-    if (!currentUser) return false;
+    if (!currentUser) {
+      console.log('❌ No current user for permission check');
+      return false;
+    }
     
-    const userRole = (currentUser as any).role || Role.VIEWER;
-    return hasPermission(userRole, permission, resourceOwnerId);
+    const userRole = (currentUser.role as Role) || Role.VIEWER;
+    
+    console.log('🔍 Permission check - User role:', userRole, 'Required permission:', permission);
+    const hasPerm = hasPermission(userRole, permission, resourceOwnerId);
+    console.log('🔍 Permission result:', hasPerm);
+
+    return hasPerm;
   }
 
   /**
@@ -120,9 +151,19 @@ export class AngularAuthService {
    */
   hasRole(role: Role): boolean {
     const currentUser = this.getCurrentUser();
-    if (!currentUser) return false;
+    if (!currentUser) {
+      console.log('❌ No current user found');
+      return false;
+    }
     
-    const userRole = (currentUser as any).role || Role.VIEWER;
+    console.log('🔍 Current user object:', currentUser);
+    console.log('🔍 Looking for role:', role);
+    
+    const userRole = (currentUser.role as Role) || Role.VIEWER;
+    
+    console.log('🔍 Detected user role:', userRole);
+    console.log('🔍 Role match:', userRole === role);
+    
     return userRole === role;
   }
 }

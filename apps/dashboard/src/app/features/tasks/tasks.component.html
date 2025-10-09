@@ -1,0 +1,525 @@
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Modern Header with Organization Info -->
+  <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-8 text-white">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-6">
+        <div class="w-16 h-16 bg-white bg-opacity-10 rounded-2xl flex items-center justify-center">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-4xl font-bold mb-2">Tasks</h1>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+              <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+              </svg>
+              <span class="text-slate-300">{{ currentOrganization?.name }}</span>
+            </div>
+            <div class="w-1 h-1 bg-slate-400 rounded-full"></div>
+            <div class="flex items-center space-x-2">
+              <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+              <span class="text-slate-300 capitalize">{{ currentOrganization?.role }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Organization Switcher -->
+      <div class="relative">
+        <button
+          (click)="showOrganizationDropdown = !showOrganizationDropdown"
+          class="flex items-center space-x-3 px-6 py-3 bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm border border-white border-opacity-20 rounded-xl transition-all duration-200">
+          <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+            <span class="text-white font-medium text-sm">{{ currentOrganization?.name?.charAt(0) || 'O' }}</span>
+          </div>
+          <div class="text-left">
+            <div class="font-medium text-white">{{ currentOrganization?.name }}</div>
+            <div class="text-xs text-slate-300 capitalize">{{ currentOrganization?.role }}</div>
+          </div>
+          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        
+        <!-- Organization Dropdown -->
+        <div *ngIf="showOrganizationDropdown" 
+             class="absolute top-full right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+          <div class="p-4">
+            <div class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Switch Organization</div>
+            <div *ngFor="let org of organizations" 
+                 (click)="switchOrganization(org)"
+                 class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors mb-2"
+                 [class.bg-blue-50]="org.id === currentOrganization?.id">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl flex items-center justify-center text-white text-sm font-medium">
+                  {{ org.name.charAt(0) }}
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900">{{ org.name }}</div>
+                  <div class="text-sm text-gray-500 capitalize">{{ org.role }}</div>
+                </div>
+              </div>
+              <div *ngIf="org.id === currentOrganization?.id" class="w-2 h-2 bg-blue-600 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ filteredTasks.length }}</div>
+          <div class="text-sm text-gray-600">Total Tasks</div>
+        </div>
+        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ getTasksByStatus(TaskStatus.TODO).length }}</div>
+          <div class="text-sm text-gray-600">To Do</div>
+        </div>
+        <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ getTasksByStatus(TaskStatus.IN_PROGRESS).length }}</div>
+          <div class="text-sm text-gray-600">In Progress</div>
+        </div>
+        <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ getTasksByStatus(TaskStatus.DONE).length }}</div>
+          <div class="text-sm text-gray-600">Completed</div>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Actions -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">Task Management</h2>
+      <button
+        (click)="onCreateTask()"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        <span>Create Task</span>
+      </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Status Filter -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-3">Filter by Status</label>
+        <div class="space-y-2">
+          <label *ngFor="let status of [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW, TaskStatus.DONE]" 
+                 class="flex items-center">
+            <input type="checkbox" 
+                   [value]="status"
+                   [checked]="filter.status?.includes(status)"
+                   (change)="onFilterChange()"
+                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span class="ml-3 text-sm text-gray-700 capitalize">{{ status.replace('_', ' ') }}</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Priority Filter -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-3">Filter by Priority</label>
+        <div class="space-y-2">
+          <label *ngFor="let priority of [TaskPriority.CRITICAL, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW]" 
+                 class="flex items-center">
+            <input type="checkbox" 
+                   [value]="priority"
+                   [checked]="filter.priority?.includes(priority)"
+                   (change)="onFilterChange()"
+                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span class="ml-3 text-sm text-gray-700 capitalize">{{ priority }}</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Search -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-3">Search Tasks</label>
+        <input type="text"
+               [(ngModel)]="filter.search"
+               (ngModelChange)="onFilterChange()"
+               placeholder="Search by title or description..."
+               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+    </div>
+    
+    <div class="flex items-center justify-between mt-6">
+      <button
+        (click)="clearFilters()"
+        class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        Clear all filters
+      </button>
+      <div *ngIf="isLoading" class="flex items-center space-x-2 text-sm text-gray-500">
+        <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        <span>Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks List -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">
+        Tasks ({{ filteredTasks.length }})
+      </h2>
+    </div>
+    
+    <div class="p-6">
+      <div *ngIf="filteredTasks.length === 0 && !isLoading" class="text-center py-12">
+        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
+        <p class="text-gray-500 mb-4">Try adjusting your filters or create a new task to get started.</p>
+        <button
+          (click)="onCreateTask()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors">
+          Create Your First Task
+        </button>
+      </div>
+      
+      <div *ngIf="filteredTasks.length > 0" class="space-y-4">
+        <div *ngFor="let task of filteredTasks" 
+             class="group flex items-center justify-between p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer"
+             (click)="onTaskClick(task)">
+          <div class="flex-1">
+            <div class="flex items-center space-x-4 mb-3">
+              <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{{ task.title }}</h3>
+              <span class="px-3 py-1 rounded-full text-xs font-medium" [class]="getStatusClass(task.status)">
+                {{ task.status.replace('_', ' ') }}
+              </span>
+              <span class="px-3 py-1 rounded-full text-xs font-medium" [class]="getPriorityClass(task.priority)">
+                {{ task.priority }}
+              </span>
+            </div>
+            <p *ngIf="task.description" class="text-gray-600 mb-3">{{ task.description }}</p>
+            <div class="flex items-center space-x-6 text-sm text-gray-500">
+              <span class="flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Created {{ formatDate(task.createdAt) }}</span>
+              </span>
+              <span *ngIf="task.completedAt" class="flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Completed {{ formatDate(task.completedAt) }}</span>
+              </span>
+            </div>
+          </div>
+          
+              <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <!-- Mark as Complete Button (for assigned users) -->
+                <button
+                  *ngIf="canMarkAsComplete(task)"
+                  (click)="markTaskAsComplete(task); $event.stopPropagation()"
+                  class="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
+                  title="Mark as complete">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+                
+                <!-- Edit Button (for owners/admins) -->
+                <button
+                  *ngIf="canEditTask(task)"
+                  (click)="onEditTask(task); $event.stopPropagation()"
+                  class="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                  title="Edit task">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                </button>
+                
+                <!-- Delete Button (for owners/admins) -->
+                <button
+                  *ngIf="canDeleteTask(task)"
+                  (click)="onDeleteTask(task); $event.stopPropagation()"
+                  class="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  title="Delete task">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Task Modal -->
+<div *ngIf="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-hidden" (click)="closeCreateModal()">
+  <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-200" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+      <div>
+        <h3 class="text-lg font-bold text-gray-900">Create Task</h3>
+        <p class="text-xs text-gray-500">Add a new task</p>
+      </div>
+      <button (click)="closeCreateModal()" class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form (ngSubmit)="createTask()" class="p-4 space-y-4">
+      <!-- Title -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Title *</label>
+        <input type="text"
+               [(ngModel)]="createTaskForm.title"
+               name="title"
+               placeholder="Enter task title..."
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+               required>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+        <textarea [(ngModel)]="createTaskForm.description"
+                  name="description"
+                  placeholder="Add details..."
+                  rows="2"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-sm"></textarea>
+      </div>
+
+      <!-- Priority and Status -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
+          <select [(ngModel)]="createTaskForm.priority"
+                  name="priority"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm">
+            <option [value]="TaskPriority.LOW">🟢 Low</option>
+            <option [value]="TaskPriority.MEDIUM">🟡 Medium</option>
+            <option [value]="TaskPriority.HIGH">🟠 High</option>
+            <option [value]="TaskPriority.CRITICAL">🔴 Critical</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+          <select [(ngModel)]="createTaskForm.status"
+                  name="status"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm">
+            <option [value]="TaskStatus.TODO">📋 To Do</option>
+            <option [value]="TaskStatus.IN_PROGRESS">⚡ In Progress</option>
+            <option [value]="TaskStatus.REVIEW">👀 Review</option>
+            <option [value]="TaskStatus.DONE">✅ Done</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Assignee Search -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Assign To</label>
+        <div class="relative">
+          <input type="text"
+                 [(ngModel)]="assigneeSearchQuery"
+                 name="assigneeSearch"
+                 placeholder="Search members..."
+                 (input)="searchAssignees()"
+                 (focus)="showAssigneeDropdown = true"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm">
+          
+          <!-- Search Icon -->
+          <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+
+          <!-- Assignee Dropdown -->
+          <div *ngIf="showAssigneeDropdown && filteredAssignees.length > 0" 
+               class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+            <div *ngFor="let member of filteredAssignees" 
+                 (click)="selectAssignee(member)"
+                 class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+              <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-2">
+                {{ member.firstName?.charAt(0) || 'U' }}{{ member.lastName?.charAt(0) || '' }}
+              </div>
+              <div>
+                <div class="font-medium text-gray-900 text-sm">{{ member.firstName }} {{ member.lastName }}</div>
+                <div class="text-xs text-gray-500">{{ member.email }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Results -->
+          <div *ngIf="showAssigneeDropdown && filteredAssignees.length === 0 && assigneeSearchQuery" 
+               class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 p-3 text-center text-gray-500 text-sm">
+            No members found
+          </div>
+        </div>
+
+        <!-- Selected Assignee -->
+        <div *ngIf="createTaskForm.assigneeId" class="mt-2 flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center">
+            <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-2">
+              {{ getSelectedAssignee()?.firstName?.charAt(0) || 'U' }}{{ getSelectedAssignee()?.lastName?.charAt(0) || '' }}
+            </div>
+            <div>
+              <div class="font-medium text-gray-900 text-sm">{{ getSelectedAssignee()?.firstName }} {{ getSelectedAssignee()?.lastName }}</div>
+              <div class="text-xs text-gray-500">{{ getSelectedAssignee()?.email }}</div>
+            </div>
+          </div>
+          <button type="button" (click)="clearAssignee()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-200 sticky bottom-0 bg-white">
+        <button type="button" 
+                (click)="closeCreateModal()"
+                class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors text-sm">
+          Cancel
+        </button>
+        <button type="submit"
+                [disabled]="!createTaskForm.title.trim() || isLoading"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm">
+          <svg *ngIf="isLoading" class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          <span>{{ isLoading ? 'Creating...' : 'Create' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div *ngIf="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+    <div class="p-6 border-b border-gray-200">
+      <h3 class="text-lg font-semibold text-gray-900">Edit Task</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+        <input type="text"
+               [(ngModel)]="editTaskForm.title"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+        <textarea [(ngModel)]="editTaskForm.description"
+                  rows="3"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+          <select [(ngModel)]="editTaskForm.status"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option [value]="TaskStatus.TODO">To Do</option>
+            <option [value]="TaskStatus.IN_PROGRESS">In Progress</option>
+            <option [value]="TaskStatus.REVIEW">Review</option>
+            <option [value]="TaskStatus.DONE">Done</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+          <select [(ngModel)]="editTaskForm.priority"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option [value]="TaskPriority.LOW">Low</option>
+            <option [value]="TaskPriority.MEDIUM">Medium</option>
+            <option [value]="TaskPriority.HIGH">High</option>
+            <option [value]="TaskPriority.CRITICAL">Critical</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+      <button (click)="closeEditModal()"
+              class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+        Cancel
+      </button>
+      <button (click)="updateTask()"
+              [disabled]="!editTaskForm.title?.trim() || isLoading"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors">
+        {{ isLoading ? 'Updating...' : 'Update Task' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Task Modal -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+    <div class="p-6 border-b border-gray-200">
+      <h3 class="text-lg font-semibold text-gray-900">Delete Task</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-gray-600 mb-4">
+        Are you sure you want to delete "<strong>{{ selectedTask?.title }}</strong>"? This action cannot be undone.
+      </p>
+    </div>
+    <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+      <button (click)="closeDeleteModal()"
+              class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+        Cancel
+      </button>
+      <button (click)="deleteTask()"
+              [disabled]="isLoading"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors">
+        {{ isLoading ? 'Deleting...' : 'Delete Task' }}
+      </button>
+    </div>
+  </div>
+</div>

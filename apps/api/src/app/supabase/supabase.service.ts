@@ -95,4 +95,93 @@ export class BackendSupabaseService {
       .from('organization_members')
       .insert(memberData);
   }
+
+  async updateUserProfile(userId: string, updateData: any) {
+    return this.supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+      .single();
+  }
+
+  // Task methods
+  async createTask(taskData: any) {
+    return this.supabase
+      .from('tasks')
+      .insert(taskData)
+      .select()
+      .single();
+  }
+
+  async getTasks(organizationId: string, filter?: any) {
+    let query = this.supabase
+      .from('tasks')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    // Apply filters if provided
+    if (filter?.status && filter.status.length > 0) {
+      query = query.in('status', filter.status);
+    }
+
+    if (filter?.priority && filter.priority.length > 0) {
+      query = query.in('priority', filter.priority);
+    }
+
+    if (filter?.assigneeId) {
+      query = query.eq('assignee_id', filter.assigneeId);
+    }
+
+    if (filter?.search) {
+      query = query.or(`title.ilike.%${filter.search}%,description.ilike.%${filter.search}%`);
+    }
+
+    return query;
+  }
+
+  async getTaskById(taskId: string) {
+    return this.supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+  }
+
+  async updateTask(taskId: string, updateData: any) {
+    return this.supabase
+      .from('tasks')
+      .update(updateData)
+      .eq('id', taskId)
+      .select()
+      .single();
+  }
+
+  async deleteTask(taskId: string) {
+    return this.supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+  }
+
+  // Organization members methods
+  async getOrganizationMembers(organizationId: string) {
+    return this.supabase
+      .from('organization_members')
+      .select(`
+        user_id,
+        role,
+        joined_at,
+        joined_via,
+        users!organization_members_user_id_fkey(
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('organization_id', organizationId)
+      .order('joined_at', { ascending: true });
+  }
 }

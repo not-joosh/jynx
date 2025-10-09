@@ -9,6 +9,8 @@ export interface UserDto {
   email: string;
   firstName: string;
   lastName: string;
+  role?: string; // User's role in the current organization
+  organizationId?: string; // Current organization ID
   createdAt: Date;
   updatedAt: Date;
 }

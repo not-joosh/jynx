@@ -1,141 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { UserDto, TaskDto } from '@challenge/data';
 import { StringUtils, DateUtils } from '@challenge/utils';
 import { environment } from '../../../environments/environment';
 import { AngularAuthService, Permission, Role } from '@challenge/auth/frontend';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="min-h-screen bg-slate-50">
-      <!-- Header -->
-      <header class="bg-white shadow-sm border-b border-slate-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex justify-between items-center h-16">
-            <div class="flex items-center">
-              <h1 class="text-2xl font-bold text-slate-900">Jynx</h1>
-            </div>
-            <div class="flex items-center space-x-4">
-              <span class="text-sm text-slate-600">
-                Welcome, {{ currentUser?.firstName }} {{ currentUser?.lastName }}
-              </span>
-              <button
-                (click)="onLogout()"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- Main Content -->
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-8">
-          <h2 class="text-3xl font-bold text-slate-900 mb-2">Dashboard</h2>
-          <p class="text-slate-600">Welcome to your task management workspace</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- User Section -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-semibold text-slate-900 mb-4">User Info</h3>
-            <div class="space-y-2">
-              <p class="text-sm text-slate-600">
-                <span class="font-medium">Email:</span> {{ currentUser?.email }}
-              </p>
-              <p class="text-sm text-slate-600">
-                <span class="font-medium">Name:</span> {{ currentUser?.firstName }} {{ currentUser?.lastName }}
-              </p>
-              <p class="text-sm text-slate-600">
-                <span class="font-medium">Member since:</span> {{ formattedDate }}
-              </p>
-            </div>
-            <!-- Only show if user has permission to update profile -->
-            <button
-              *ngIf="authService.hasPermission(Permission.USER_UPDATE)"
-              (click)="onUserAction()"
-              class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              Update Profile
-            </button>
-
-            <!-- Only show for admins and owners -->
-            <button
-              *ngIf="authService.hasRole(Role.ADMIN) || authService.hasRole(Role.OWNER)"
-              (click)="onAdminAction()"
-              class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              Admin Panel
-            </button>
-          </div>
-
-          <!-- Tasks Section -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-semibold text-slate-900 mb-4">Tasks</h3>
-            <p class="text-slate-600 mb-4">Manage your tasks and projects</p>
-            <!-- Only show if user has permission to read tasks -->
-            <button
-              *ngIf="authService.hasPermission(Permission.TASK_READ)"
-              (click)="onTaskAction()"
-              class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              View Tasks
-            </button>
-
-            <!-- Only show if user has permission to create tasks -->
-            <button
-              *ngIf="authService.hasPermission(Permission.TASK_CREATE)"
-              (click)="onCreateTask()"
-              class="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              Create Task
-            </button>
-          </div>
-
-          <!-- Quick Stats -->
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-semibold text-slate-900 mb-4">Quick Stats</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-sm text-slate-600">Active Tasks</span>
-                <span class="text-sm font-medium text-slate-900">12</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-sm text-slate-600">Completed</span>
-                <span class="text-sm font-medium text-slate-900">8</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-sm text-slate-600">In Progress</span>
-                <span class="text-sm font-medium text-slate-900">4</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Debug Info -->
-        <div class="mt-8 bg-slate-100 p-4 rounded-lg">
-          <h3 class="font-semibold mb-2 text-slate-900">Debug Info:</h3>
-          <div class="text-sm text-slate-600 space-y-1">
-            <p>Config loaded: {{ configLoaded }}</p>
-            <p>Sample string: {{ sampleString }}</p>
-            <p>Formatted date: {{ formattedDate }}</p>
-            <p>User authenticated: {{ isAuthenticated }}</p>
-          </div>
-        </div>
-      </main>
-    </div>
-  `,
-  styles: [`
-    /* Component-specific styles can go here */
-  `]
+  imports: [CommonModule, FormsModule],
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit, OnDestroy {
   // RBAC enums for template usage
   Permission = Permission;
   Role = Role;
@@ -143,15 +23,96 @@ export class DashboardComponent {
   configLoaded = !!environment.supabase.url;
   sampleString = StringUtils.capitalize('hello world');
   formattedDate = DateUtils.formatDate(new Date(), 'long');
-  currentUser: any = null;
+  currentUser: UserDto | null = null;
   isAuthenticated = false;
+  private userSubscription: Subscription = new Subscription();
+
+  // Mock data for the new dashboard
+  quickStats = {
+    totalTasks: 24,
+    completedTasks: 18,
+    inProgressTasks: 6,
+    teamMembers: 5
+  };
+
+  recentTasks: TaskDto[] = [
+    {
+      id: '1',
+      title: 'Design new landing page',
+      description: 'Create a modern landing page design',
+      status: 'in_progress' as any,
+      priority: 'high' as any,
+      organizationId: '1',
+      creatorId: '1',
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      updatedAt: new Date()
+    },
+    {
+      id: '2',
+      title: 'Update user documentation',
+      description: 'Revise the user guide with new features',
+      status: 'todo' as any,
+      priority: 'medium' as any,
+      organizationId: '1',
+      creatorId: '1',
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+      updatedAt: new Date()
+    },
+    {
+      id: '3',
+      title: 'Fix authentication bug',
+      description: 'Resolve login issue on mobile devices',
+      status: 'completed' as any,
+      priority: 'high' as any,
+      organizationId: '1',
+      creatorId: '1',
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      updatedAt: new Date()
+    }
+  ];
+
+  teamActivities = [
+    {
+      user: 'John Doe',
+      description: 'Completed task "Fix authentication bug"',
+      time: '2 hours ago'
+    },
+    {
+      user: 'Sarah Wilson',
+      description: 'Created new task "Design new landing page"',
+      time: '4 hours ago'
+    },
+    {
+      user: 'Mike Chen',
+      description: 'Updated project documentation',
+      time: '6 hours ago'
+    },
+    {
+      user: 'Emily Davis',
+      description: 'Joined the team',
+      time: '1 day ago'
+    }
+  ];
 
   constructor(
     public authService: AngularAuthService,
     private router: Router
-  ) {
+  ) {}
+
+  ngOnInit(): void {
+    // Subscribe to user changes
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      this.isAuthenticated = this.authService.isAuthenticated();
+    });
+
+    // Also get current user immediately
     this.currentUser = this.authService.getCurrentUser();
     this.isAuthenticated = this.authService.isAuthenticated();
+  }
+
+  ngOnDestroy(): void {
+    this.userSubscription.unsubscribe();
   }
 
   onUserAction() {
@@ -198,5 +159,41 @@ export class DashboardComponent {
   onCreateTask() {
     console.log('Create task clicked!');
     // Navigate to task creation or open modal
+  }
+
+  onTeamAction() {
+    console.log('Team management clicked!');
+    // Navigate to team management
+  }
+
+  openInviteModal() {
+    console.log('Open invite modal clicked!');
+    // Open invitation modal
+  }
+
+  formatDate(date: Date): string {
+    return DateUtils.formatDate(date, 'short');
+  }
+
+  getPriorityClass(priority: string): string {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'todo': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  getActivityInitials(user: string): string {
+    return user.split(' ').map(name => name[0]).join('').toUpperCase();
   }
 }

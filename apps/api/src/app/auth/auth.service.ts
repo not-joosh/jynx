@@ -70,6 +70,8 @@ export class AuthService {
       const payload = { 
         sub: data.user.id, 
         email: data.user.email,
+        firstName: userProfile.first_name,
+        lastName: userProfile.last_name,
         organizationId: userProfile.current_organization_id,
         role: userProfile.role || 'owner'
       };
@@ -214,6 +216,8 @@ export class AuthService {
       const payload = { 
         sub: authData.user.id, 
         email: authData.user.email,
+        firstName: createUserDto.firstName,
+        lastName: createUserDto.lastName,
         organizationId: orgData.id,
         role: 'owner'
       };

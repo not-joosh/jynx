@@ -44,6 +44,7 @@ export interface CreateTaskDto {
   title: string;
   description?: string;
   priority: TaskPriority;
+  status?: TaskStatus;
   assigneeId?: string;
 }
 
@@ -53,6 +54,7 @@ export interface UpdateTaskDto {
   status?: TaskStatus;
   priority?: TaskPriority;
   assigneeId?: string;
+  completedAt?: Date;
 }
 
 // Simple task filter for prototype

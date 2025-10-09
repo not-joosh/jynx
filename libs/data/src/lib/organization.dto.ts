@@ -27,20 +27,6 @@ export interface UpdateOrganizationDto {
   description?: string;
 }
 
-export interface OrganizationMemberDto {
-  id: string;
-  userId: string;
-  organizationId: string;
-  role: OrganizationRole;
-  joinedAt: Date;
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-}
-
 export interface InviteUserDto {
   email: string;
   role: OrganizationRole;
@@ -57,11 +43,4 @@ export interface OrganizationInvitationDto {
   expiresAt: Date;
   acceptedAt?: Date;
   createdAt: Date;
-}
-
-export interface AcceptInvitationDto {
-  token: string;
-  firstName: string;
-  lastName: string;
-  password: string;
 }
