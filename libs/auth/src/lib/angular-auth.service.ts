@@ -46,6 +46,10 @@ export class AngularAuthService {
       );
   }
 
+  resendConfirmation(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/resend-confirmation`, { email });
+  }
+
   logout(): void {
     localStorage.removeItem('jwt_token');
     this.currentUserSubject.next(null);
@@ -67,8 +71,12 @@ export class AngularAuthService {
     return localStorage.getItem('jwt_token');
   }
 
-  private setToken(token: string): void {
+  setToken(token: string): void {
     localStorage.setItem('jwt_token', token);
+  }
+
+  setCurrentUser(user: UserDto): void {
+    this.currentUserSubject.next(user);
   }
 
   private loadStoredUser(): void {

@@ -10,6 +10,7 @@ export interface AuthResponseDto {
     firstName: string;
     lastName: string;
   };
+  message?: string; // Optional message for email confirmation, etc.
 }
 
 export interface ApiResponse<T = any> {

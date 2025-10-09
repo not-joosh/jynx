@@ -24,6 +24,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent)
       },
       {
+        path: 'confirm',
+        loadComponent: () => import('./features/auth/confirm/confirm.component').then(m => m.ConfirmComponent)
+      },
+      {
         path: '',
         redirectTo: 'login',
         pathMatch: 'full'

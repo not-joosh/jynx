@@ -10,10 +10,14 @@ export class BackendSupabaseService {
     const supabaseKey = process.env['SUPABASE_SERVICE_ROLE_KEY'] || process.env['NG_SUPABASE_SERVICE_ROLE_KEY'] || '';
     
     if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Supabase configuration missing:');
+      console.error('SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+      console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✅ Set' : '❌ Missing');
       throw new Error('Supabase URL and Service Role Key must be provided');
     }
     
     this.supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✅ Supabase client created successfully');
   }
 
   getClient(): SupabaseClient {
@@ -26,7 +30,8 @@ export class BackendSupabaseService {
       email,
       password,
       options: {
-        data: userData
+        data: userData,
+        emailRedirectTo: 'http://localhost:4200/auth/confirm'
       }
     });
   }
@@ -40,6 +45,16 @@ export class BackendSupabaseService {
 
   async getUser(userId: string) {
     return this.supabase.auth.admin.getUserById(userId);
+  }
+
+  async resendConfirmation(email: string) {
+    return this.supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: 'http://localhost:4200/auth/confirm'
+      }
+    });
   }
 
   // Database methods
@@ -56,6 +71,14 @@ export class BackendSupabaseService {
       .from('users')
       .select('*')
       .eq('id', userId)
+      .single();
+  }
+
+  async getUserProfileByEmail(email: string) {
+    return this.supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
       .single();
   }
 

@@ -157,9 +157,18 @@ import { CreateUserDto } from '@challenge/data';
               </div>
             </div>
 
-            <!-- Error Message -->
-            <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 rounded-md p-3">
-              <p class="text-xs text-red-600">{{ errorMessage }}</p>
+            <!-- Message (Error or Success) -->
+            <div *ngIf="errorMessage" [class]="errorMessage.includes('sent you a new confirmation email') ? 'bg-green-50 border border-green-200 rounded-md p-3' : 'bg-red-50 border border-red-200 rounded-md p-3'">
+              <p [class]="errorMessage.includes('sent you a new confirmation email') ? 'text-xs text-green-600' : 'text-xs text-red-600'">{{ errorMessage }}</p>
+              <!-- Resend Confirmation Button -->
+              <button
+                *ngIf="showResendButton"
+                type="button"
+                (click)="resendConfirmation()"
+                class="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+              >
+                Resend confirmation email
+              </button>
             </div>
 
             <!-- Navigation Buttons -->
@@ -227,6 +236,7 @@ export class RegisterComponent {
   currentStep = 1;
   isLoading = false;
   errorMessage = '';
+  showResendButton = false;
 
   constructor(
     private fb: FormBuilder,
@@ -325,13 +335,46 @@ export class RegisterComponent {
       this.authService.register(createUserDto).subscribe({
         next: (response) => {
           this.isLoading = false;
-          this.router.navigate(['/dashboard']);
+          
+          // Check if email confirmation is needed or if it's a resend message
+          if (response.message && (response.message.includes('check your email') || response.message.includes('sent you a new confirmation email'))) {
+            this.errorMessage = response.message;
+            this.showResendButton = false; // Hide resend button since we already resent
+            // Don't navigate to dashboard, show the message
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
         },
         error: (error) => {
           this.isLoading = false;
           this.errorMessage = error.error?.message || 'Registration failed. Please try again.';
+          
+          // Show resend button if user already exists but not confirmed
+          if (error.error?.message?.includes('already exists but is not confirmed')) {
+            this.showResendButton = true;
+          } else {
+            this.showResendButton = false;
+          }
         }
       });
     }
+  }
+
+  resendConfirmation() {
+    const email = this.registerForm.get('email')?.value;
+    if (!email) {
+      this.errorMessage = 'Please enter your email address first.';
+      return;
+    }
+
+    this.authService.resendConfirmation(email).subscribe({
+      next: (response) => {
+        this.errorMessage = response.message;
+        this.showResendButton = false;
+      },
+      error: (error) => {
+        this.errorMessage = error.error?.message || 'Failed to resend confirmation email.';
+      }
+    });
   }
 }

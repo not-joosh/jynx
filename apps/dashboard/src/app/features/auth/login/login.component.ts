@@ -53,10 +53,24 @@ import { LoginDto } from '@challenge/data';
               >
             </div>
 
-            <!-- Error Message -->
-            <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 rounded-md p-3">
-              <p class="text-xs text-red-600">{{ errorMessage }}</p>
-            </div>
+                <!-- Error Message -->
+                <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p class="text-xs text-red-600">{{ errorMessage }}</p>
+                  <!-- Resend Confirmation Button -->
+                  <button
+                    *ngIf="showResendButton"
+                    type="button"
+                    (click)="resendConfirmation()"
+                    class="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Resend confirmation email
+                  </button>
+                </div>
+
+                <!-- Resend Success Message -->
+                <div *ngIf="resendMessage" class="bg-green-50 border border-green-200 rounded-md p-3">
+                  <p class="text-xs text-green-600">{{ resendMessage }}</p>
+                </div>
 
             <!-- Submit Button -->
             <button
@@ -86,11 +100,6 @@ import { LoginDto } from '@challenge/data';
           </div>
         </div>
 
-        <!-- Demo Credentials -->
-        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <h3 class="text-xs font-medium text-blue-900 mb-1">Demo Credentials</h3>
-          <p class="text-xs text-blue-700">Email: admin@jynx.com • Password: password</p>
-        </div>
       </div>
     </div>
   `,
@@ -102,6 +111,8 @@ export class LoginComponent {
   loginForm: FormGroup;
   isLoading = false;
   errorMessage = '';
+  showResendButton = false;
+  resendMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -129,8 +140,42 @@ export class LoginComponent {
         error: (error) => {
           this.isLoading = false;
           this.errorMessage = error.error?.message || 'Login failed. Please try again.';
+          
+          console.log('Login error:', error);
+          console.log('Error message:', error.error?.message);
+          
+          // Show resend button if email confirmation is needed
+          if (error.error?.message?.includes('check your email') || error.error?.message?.includes('confirmation link')) {
+            this.showResendButton = true;
+            console.log('Showing resend button');
+          } else {
+            this.showResendButton = false;
+            console.log('Not showing resend button');
+          }
         }
       });
     }
+  }
+
+  resendConfirmation() {
+    const email = this.loginForm.get('email')?.value;
+    console.log('Resending confirmation for email:', email);
+    
+    if (!email) {
+      this.resendMessage = 'Please enter your email address first.';
+      return;
+    }
+
+    this.authService.resendConfirmation(email).subscribe({
+      next: (response) => {
+        console.log('Resend confirmation success:', response);
+        this.resendMessage = response.message;
+        this.showResendButton = false;
+      },
+      error: (error) => {
+        console.log('Resend confirmation error:', error);
+        this.resendMessage = error.error?.message || 'Failed to resend confirmation email.';
+      }
+    });
   }
 }

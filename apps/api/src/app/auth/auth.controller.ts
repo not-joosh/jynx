@@ -17,4 +17,9 @@ export class AuthController {
   async register(@Body() createUserDto: CreateUserDto): Promise<AuthResponseDto> {
     return this.authService.register(createUserDto);
   }
+
+  @Post('resend-confirmation')
+  async resendConfirmation(@Body() body: { email: string }): Promise<{ message: string }> {
+    return this.authService.resendConfirmation(body.email);
+  }
 }
