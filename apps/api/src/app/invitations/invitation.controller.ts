@@ -60,6 +60,31 @@ export class InvitationController {
     await this.invitationService.resendInvitation(organizationId, invitationId, req.user.id);
     return { message: 'Invitation resent successfully' };
   }
+
+  /**
+   * Accept an invitation by ID (for in-app notifications)
+   */
+  @Post(':invitationId/accept')
+  async acceptInvitationById(
+    @Param('id') organizationId: string,
+    @Param('invitationId') invitationId: string,
+    @Request() req: any
+  ) {
+    return this.invitationService.acceptInvitationById(organizationId, invitationId, req.user.id);
+  }
+
+  /**
+   * Decline an invitation by ID (for in-app notifications)
+   */
+  @Post(':invitationId/decline')
+  async declineInvitationById(
+    @Param('id') organizationId: string,
+    @Param('invitationId') invitationId: string,
+    @Request() req: any
+  ) {
+    await this.invitationService.declineInvitationById(organizationId, invitationId, req.user.id);
+    return { message: 'Invitation declined successfully' };
+  }
 }
 
 @Controller('invitations')

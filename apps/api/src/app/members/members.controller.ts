@@ -22,3 +22,4 @@ export class MembersController {
     return this.membersService.getOrganizationMembers(organizationId);
   }
 }
+

@@ -9,3 +9,4 @@ import { BackendSupabaseService } from '../supabase/supabase.service';
   exports: [UserLookupService],
 })
 export class UsersModule {}
+

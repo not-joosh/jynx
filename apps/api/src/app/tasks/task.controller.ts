@@ -47,7 +47,7 @@ export class TaskController {
       throw new Error('User must be associated with an organization to view tasks');
     }
 
-    return this.taskService.getTasks(organizationId, userId, userRole, filter);
+    return this.taskService.getTasks(filter, userId, userRole, organizationId);
   }
 
   @Get(':id')

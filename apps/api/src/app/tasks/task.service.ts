@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { BackendSupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TaskDto, CreateTaskDto, UpdateTaskDto, TaskFilterDto, TaskStatus } from '@challenge/data/backend';
 
 @Injectable()
 export class TaskService {
-  constructor(private supabaseService: BackendSupabaseService) {}
+  constructor(
+    private supabaseService: BackendSupabaseService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async createTask(createTaskDto: CreateTaskDto, creatorId: string, organizationId: string): Promise<TaskDto> {
     const taskData = {
@@ -15,8 +19,6 @@ export class TaskService {
       organization_id: organizationId,
       assignee_id: createTaskDto.assigneeId || null,
       creator_id: creatorId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await this.supabaseService.createTask(taskData);
@@ -25,19 +27,29 @@ export class TaskService {
       throw new Error(`Failed to create task: ${error.message}`);
     }
 
+    // Create notification for assigned user
+    if (createTaskDto.assigneeId) {
+      await this.notificationsService.createNotification({
+        userId: createTaskDto.assigneeId,
+        type: 'info',
+        title: 'New Task Assigned',
+        message: `You have been assigned a new task: "${createTaskDto.title}"`
+      });
+    }
+
     return this.mapToTaskDto(data);
   }
 
-  async getTasks(organizationId: string, userId: string, userRole: string, filter?: TaskFilterDto): Promise<TaskDto[]> {
-    const { data, error } = await this.supabaseService.getTasks(organizationId, filter);
+  async getTasks(filter: TaskFilterDto, userId: string, userRole: string, organizationId: string): Promise<TaskDto[]> {
+    const { data, error } = await this.supabaseService.getTasks(organizationId);
 
     if (error) {
       throw new Error(`Failed to fetch tasks: ${error.message}`);
     }
 
-    // Filter tasks based on user role and permissions
+    // Filter tasks based on user permissions
     const accessibleTasks = data.filter(task => this.canAccessTask(task, userId, userRole));
-    
+
     return accessibleTasks.map(task => this.mapToTaskDto(task));
   }
 
@@ -45,10 +57,6 @@ export class TaskService {
     const { data, error } = await this.supabaseService.getTaskById(taskId);
 
     if (error) {
-      throw new Error(`Failed to fetch task: ${error.message}`);
-    }
-
-    if (!data) {
       throw new NotFoundException('Task not found');
     }
 
@@ -60,11 +68,18 @@ export class TaskService {
   }
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskDto, userId: string, userRole: string): Promise<TaskDto> {
+    console.log('=== BACKEND UPDATE TASK ===');
+    console.log('Task ID:', taskId);
+    console.log('Update DTO:', updateTaskDto);
+    console.log('User ID:', userId);
+    console.log('User Role:', userRole);
+
     // First, get the existing task to check permissions
     const existingTask = await this.getTaskById(taskId, userId, userRole);
+    console.log('Existing task:', existingTask);
 
     // Special case: if only marking as complete, use more lenient permissions
-    const isOnlyMarkingComplete = updateTaskDto.status === TaskStatus.DONE && 
+    const isOnlyMarkingComplete = updateTaskDto.status === TaskStatus.COMPLETED && 
                                  !updateTaskDto.title && 
                                  !updateTaskDto.description && 
                                  !updateTaskDto.priority && 
@@ -87,15 +102,35 @@ export class TaskService {
       updated_at: new Date().toISOString(),
     };
 
-    // Handle completedAt field
-    if (updateTaskDto.completedAt) {
-      updateData['completed_at'] = updateTaskDto.completedAt.toISOString();
+    console.log('Initial updateData:', updateData);
+
+    // Convert camelCase to snake_case for database fields
+    if (updateTaskDto.assigneeId !== undefined) {
+      updateData['assignee_id'] = updateTaskDto.assigneeId;
+      delete updateData.assigneeId; // Remove camelCase version
     }
 
-    // If status is being changed to DONE, set completed_at
-    if (updateTaskDto.status === TaskStatus.DONE && existingTask.status !== TaskStatus.DONE) {
+    // Explicitly map status field
+    if (updateTaskDto.status !== undefined) {
+      updateData['status'] = updateTaskDto.status;
+    }
+
+    // Handle completedAt field
+    if (updateTaskDto.completedAt) {
+      // Ensure completedAt is a Date object
+      const completedAt = updateTaskDto.completedAt instanceof Date 
+        ? updateTaskDto.completedAt 
+        : new Date(updateTaskDto.completedAt);
+      updateData['completed_at'] = completedAt.toISOString();
+      delete updateData.completedAt; // Remove camelCase version
+    }
+
+    // If status is being changed to COMPLETED, set completed_at
+    if (updateTaskDto.status === TaskStatus.COMPLETED && existingTask.status !== TaskStatus.COMPLETED) {
       updateData['completed_at'] = new Date().toISOString();
     }
+
+    console.log('Final updateData:', updateData);
 
     const { data, error } = await this.supabaseService.updateTask(taskId, updateData);
 
@@ -103,7 +138,10 @@ export class TaskService {
       throw new Error(`Failed to update task: ${error.message}`);
     }
 
-    return this.mapToTaskDto(data);
+    console.log('Updated task data:', data);
+    console.log('=== END BACKEND UPDATE ===');
+
+    return data;
   }
 
   async deleteTask(taskId: string, userId: string, userRole: string): Promise<void> {
@@ -152,7 +190,6 @@ export class TaskService {
       return task.assigneeId === userId || task.creatorId === userId;
     }
 
-    // Viewers cannot edit tasks
     return false;
   }
 
@@ -165,12 +202,7 @@ export class TaskService {
     // Users can mark tasks as complete if:
     // 1. The task is assigned to them
     // 2. The task is not already completed
-    // 3. They have at least member role
-    return (
-      (userRole === 'member' || userRole === 'admin' || userRole === 'owner') &&
-      task.assigneeId === userId &&
-      task.status !== TaskStatus.DONE
-    );
+    return task.assigneeId === userId && task.status !== TaskStatus.COMPLETED;
   }
 
   private mapToTaskDto(data: any): TaskDto {
@@ -183,9 +215,9 @@ export class TaskService {
       organizationId: data.organization_id,
       assigneeId: data.assignee_id,
       creatorId: data.creator_id,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-      completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      completedAt: data.completed_at,
     };
   }
 }

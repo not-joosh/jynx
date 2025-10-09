@@ -9,6 +9,7 @@ import { WorkspaceModule } from './workspaces/workspace.module';
 import { MembersModule } from './members/members.module';
 import { TaskModule } from './tasks/task.module';
 import { UsersModule } from './users/users.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     TaskModule,
     MembersModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

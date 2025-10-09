@@ -1,7 +1,7 @@
 # Organization Invitations & Workspace Management System
 
 ## Overview
-This document outlines the complete organization invitation system and workspace management for Jynx, enabling users to join multiple organizations and switch between workspaces seamlessly.
+This document outlines the complete organization invitation system and workspace management for Jynx, enabling users to join multiple organizations and switch between workspaces seamlessly. The system uses **in-app notifications** instead of email invitations for a streamlined user experience.
 
 ## Architecture Overview
 
@@ -15,15 +15,15 @@ This document outlines the complete organization invitation system and workspace
          ├──────────────────────►│                       │
          │                       │ 2. Create Invite     │
          │                       ├──────────────────────►│
-         │                       │ 3. Send Email        │
+         │                       │ 3. Create Notification│
          │                       │◄──────────────────────┤
          │ 4. Invitation Sent    │                       │
          │◄──────────────────────┤                       │
          │                       │                       │
-         │ 5. Accept Invite     │                       │
+         │ 5. Accept/Decline    │                       │
          ├──────────────────────►│                       │
-         │                       │ 6. Verify Token      │
-         │                       │ 7. Add to Org         │
+         │                       │ 6. Process Response  │
+         │                       │ 7. Update Status     │
          │ 8. Success            │                       │
          │◄──────────────────────┤                       │
 ```
@@ -269,7 +269,7 @@ sequenceDiagram
     participant O as Organization Owner
     participant F as Frontend
     participant B as Backend API
-    participant E as Email Service
+    participant N as Notifications
     participant I as Invited User
 
     O->>F: Click "Invite Member"
@@ -278,8 +278,8 @@ sequenceDiagram
     F->>B: POST /organizations/:id/invitations
     B->>B: Generate invitation token
     B->>B: Create invitation record
-    B->>E: Send invitation email
-    E->>I: Email with invitation link
+    B->>N: Create in-app notification
+    N->>I: Show notification in inbox
     B->>F: Return success response
     F->>O: Show "Invitation sent" message
 ```
@@ -292,18 +292,16 @@ sequenceDiagram
     participant B as Backend API
     participant DB as Database
 
-    I->>F: Click invitation link
-    F->>B: GET /invitations/:token
-    B->>DB: Validate token & get org info
-    B->>F: Return organization details
-    F->>I: Show invitation page
-    I->>F: Fill account details
-    F->>B: POST /invitations/:token/accept
-    B->>DB: Create user account
-    B->>DB: Add to organization
+    I->>F: Click notification in inbox
+    F->>F: Show invitation details
+    I->>F: Click "Accept" button
+    F->>B: POST /organizations/:id/invitations/:invitationId/accept
+    B->>DB: Validate invitation
+    B->>DB: Add user to organization
     B->>DB: Mark invitation accepted
-    B->>F: Return success + JWT
-    F->>F: Redirect to dashboard
+    B->>F: Return success + organization info
+    F->>I: Show welcome message
+    F->>F: Remove notification from inbox
 ```
 
 ### 3. Workspace Switching Flow
@@ -354,7 +352,7 @@ sequenceDiagram
 - [ ] Create workspace management endpoints
 
 ### Phase 2: Backend Services
-- [ ] Invitation service with email sending
+- [ ] Invitation service with in-app notifications
 - [ ] Token generation and validation
 - [ ] Permission checking middleware
 - [ ] Workspace switching logic
@@ -366,58 +364,47 @@ sequenceDiagram
 - [ ] Workspace switcher component
 
 ### Phase 4: Integration & Testing
-- [ ] Email template design
+- [ ] In-app notification system
 - [ ] End-to-end testing
 - [ ] Error handling
 - [ ] Performance optimization
 
-## Email Templates
+## In-App Notification System
 
-### Invitation Email
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>You're Invited to Join {{organizationName}}</title>
-</head>
-<body>
-    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h1>🎉 You're Invited!</h1>
-        
-        <p>Hi there!</p>
-        
-        <p><strong>{{inviterName}}</strong> has invited you to join <strong>{{organizationName}}</strong> as a <strong>{{role}}</strong>.</p>
-        
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3>🏢 {{organizationName}}</h3>
-            <p>{{organizationDescription}}</p>
-            <p><strong>Your Role:</strong> {{role}}</p>
-        </div>
-        
-        <p>{{personalMessage}}</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="{{invitationLink}}" 
-               style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                Accept Invitation
-            </a>
-        </div>
-        
-        <p style="color: #666; font-size: 14px;">
-            This invitation expires in 7 days. If you don't want to join, you can simply ignore this email.
-        </p>
-    </div>
-</body>
-</html>
+### Notification Structure
+```typescript
+interface InvitationNotification {
+  id: string;
+  userId: string;
+  type: 'invitation';
+  title: string;
+  message: string;
+  data: {
+    organizationId: string;
+    invitationId: string;
+    inviterName: string;
+    organizationName: string;
+    role: string;
+    type: 'invitation';
+  };
+  read: boolean;
+  createdAt: Date;
+}
 ```
+
+### Notification Actions
+- **Accept**: Adds user to organization and marks invitation as accepted
+- **Decline**: Marks invitation as declined
+- **Mark as Read**: Updates notification status
+- **Delete**: Removes notification from inbox
 
 ## Success Metrics
 
 ### Technical Metrics
 - [ ] < 200ms invitation creation time
-- [ ] 99.9% email delivery rate
-- [ ] < 1% invitation token conflicts
+- [ ] < 1% invitation conflicts
 - [ ] 100% secure token generation
+- [ ] < 100ms notification delivery time
 
 ### User Experience Metrics
 - [ ] < 3 clicks to send invitation

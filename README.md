@@ -1,82 +1,304 @@
-# Challenge
+# Task Management System
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+A comprehensive task management application built with Angular frontend and NestJS backend, featuring role-based access control (RBAC) and organization management.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+## 🚀 Quick Start
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
 
-## Finish your remote caching setup
+### Setup Instructions
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/62IakroIt2)
+1. **Clone and Install Dependencies**
+   ```bash
+   git clone <your-repo-url>
+   cd challenge
+   npm install
+   ```
 
+2. **Environment Configuration**
+   Create `.env` files in both `apps/api` and `apps/dashboard`:
+   
+   **Backend (.env)**
+   ```env
+   JWT_SECRET=your-super-secret-jwt-key-here
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-supabase-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+   PORT=3000
+   ```
 
-## Run tasks
+   **Frontend (.env)**
+   ```env
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-supabase-anon-key
+   API_BASE_URL=http://localhost:3000/api/v1
+   ```
 
-To run the dev server for your app, use:
+3. **Database Setup**
+   - Create a new Supabase project
+   - Run the SQL migrations in `database/migrations/` in order
+   - Enable Row Level Security (RLS) policies
 
-```sh
+4. **Run the Applications**
+   ```bash
+   # Start backend API
+   npx nx serve api
+   
+   # Start frontend dashboard (in another terminal)
 npx nx serve dashboard
 ```
 
-To create a production bundle:
+5. **Access the Application**
+   - Frontend: http://localhost:4200
+   - Backend API: http://localhost:3000
 
-```sh
-npx nx build dashboard
+## 🏗️ Architecture Overview
+
+### NX Monorepo Structure
+```
+challenge/
+├── apps/
+│   ├── api/                 # NestJS backend API
+│   ├── dashboard/           # Angular frontend
+│   └── dashboard-e2e/       # End-to-end tests
+├── libs/
+│   ├── auth/               # Authentication & RBAC logic
+│   ├── data/               # Shared DTOs and types
+│   └── ui/                 # Shared UI components
+└── database/
+    └── migrations/         # SQL migration scripts
 ```
 
-To see all available targets to run for a project, run:
+### Shared Libraries Rationale
+- **`@challenge/auth`**: Centralized authentication, JWT handling, and RBAC logic
+- **`@challenge/data`**: Shared data models, DTOs, and enums across frontend/backend
+- **`@challenge/ui`**: Reusable UI components and styling
 
-```sh
-npx nx show project dashboard
+## 📊 Data Model
+
+### Core Entities
+
+#### Users
+- `id` (UUID, Primary Key)
+- `email` (Unique)
+- `first_name`, `last_name`
+- `created_at`, `updated_at`
+
+#### Organizations
+- `id` (UUID, Primary Key)
+- `name`
+- `created_at`, `updated_at`
+
+#### Organization Members
+- `user_id` (FK to Users)
+- `organization_id` (FK to Organizations)
+- `role` (ENUM: owner, admin, member)
+- `joined_at`
+
+#### Tasks
+- `id` (UUID, Primary Key)
+- `title`, `description`
+- `status` (ENUM: todo, in_progress, blocked, completed)
+- `priority` (ENUM: critical, high, medium, low)
+- `organization_id` (FK to Organizations)
+- `assignee_id` (FK to Users, nullable)
+- `creator_id` (FK to Users)
+- `created_at`, `updated_at`, `completed_at`
+
+#### Notifications
+- `id` (UUID, Primary Key)
+- `user_id` (FK to Users)
+- `type` (ENUM: info, warning, error, invitation)
+- `title`, `message`
+- `is_read`, `created_at`
+
+### Entity Relationship Diagram
+```
+Users ──┐
+        ├── OrganizationMembers ──┐
+        │                        │
+Organizations ───────────────────┘
+        │
+        ├── Tasks ──┐
+        │           │
+        └── Notifications ──┘
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+## 🔐 Access Control Implementation
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/angular:app demo
+### Role Hierarchy
+```
+OWNER > ADMIN > MEMBER
 ```
 
-To generate a new library, use:
+### Permission System
+- **OWNER**: Full access to organization and all tasks
+- **ADMIN**: Can manage tasks, invite/remove members, change roles (except owner)
+- **MEMBER**: Can create tasks, complete assigned tasks, view organization data
 
-```sh
-npx nx g @nx/angular:lib mylib
+### JWT Integration
+- JWT tokens contain: `userId`, `organizationId`, `role`
+- Frontend extracts role from JWT for permission checks
+- Backend validates JWT and enforces permissions via guards
+
+### Permission Guards
+- `JwtAuthGuard`: Validates JWT token
+- `AccessControlGuard`: Checks user permissions for specific actions
+- `@RequirePermission()` decorator: Declarative permission requirements
+
+## 🔌 API Documentation
+
+### Authentication Endpoints
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+
+Response:
+{
+  "access_token": "jwt-token",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "admin"
+  }
+}
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### Task Management
+```http
+GET /api/v1/tasks
+Authorization: Bearer <jwt-token>
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+POST /api/v1/tasks
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
 
+{
+  "title": "Task Title",
+  "description": "Task description",
+  "priority": "high",
+  "assigneeId": "user-uuid"
+}
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+PUT /api/v1/tasks/:id
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
 
-## Install Nx Console
+{
+  "title": "Updated Title",
+  "status": "completed"
+}
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+### Organization Management
+```http
+GET /api/v1/users/workspaces
+Authorization: Bearer <jwt-token>
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+POST /api/v1/organizations/:id/invitations
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
 
-## Useful links
+{
+  "email": "newuser@example.com",
+  "role": "member"
+}
 
-Learn more:
+GET /api/v1/members
+Authorization: Bearer <jwt-token>
+```
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Notifications
+```http
+GET /api/v1/notifications
+Authorization: Bearer <jwt-token>
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+PUT /api/v1/notifications/:id/read
+Authorization: Bearer <jwt-token>
+
+DELETE /api/v1/notifications/:id
+Authorization: Bearer <jwt-token>
+```
+
+## 🧪 Testing Strategy
+
+### Backend Testing
+- **Jest** for unit tests
+- **RBAC Logic**: Test permission checks and role hierarchy
+- **Authentication**: Test JWT validation and user management
+- **API Endpoints**: Test CRUD operations and error handling
+
+### Frontend Testing
+- **Jest/Karma** for component tests
+- **Component Logic**: Test task management, member management
+- **State Management**: Test authentication state and user permissions
+- **UI Interactions**: Test forms, modals, and navigation
+
+### Test Commands
+```bash
+# Run all tests
+npx nx test
+
+# Run specific test suites
+npx nx test dashboard --testPathPattern="auth.service.spec.ts"
+npx nx test api --testPathPattern="tasks.spec.ts"
+```
+
+## 🔮 Future Considerations
+
+### Attribute-Based Access Control (ABAC)
+While the current system uses Role-Based Access Control (RBAC), consider migrating to **Attribute-Based Access Control (ABAC)** for more granular permissions:
+
+#### Benefits of ABAC:
+- **Dynamic Permissions**: Based on user attributes, resource attributes, and environmental context
+- **Fine-grained Control**: Permissions based on time, location, data sensitivity, etc.
+- **Scalability**: Easier to manage complex permission scenarios
+- **Compliance**: Better support for regulatory requirements
+
+#### ABAC Implementation Example:
+```typescript
+// Instead of: hasRole('admin')
+// Use: hasPermission('task:edit', { 
+//   resource: task, 
+//   context: { timeOfDay: 'business-hours', location: 'office' }
+// })
+```
+
+#### Migration Path:
+1. **Phase 1**: Extend current RBAC with attribute checks
+2. **Phase 2**: Introduce policy engine (e.g., Open Policy Agent)
+3. **Phase 3**: Migrate to full ABAC with context-aware permissions
+
+### Additional Enhancements
+- **Real-time Updates**: WebSocket integration for live task updates
+- **File Attachments**: Task file uploads and management
+- **Advanced Filtering**: Complex task queries and saved filters
+- **Audit Logging**: Comprehensive activity tracking
+- **Mobile App**: React Native or Flutter mobile application
+- **API Rate Limiting**: Protect against abuse and ensure fair usage
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## 📞 Support
+
+For questions or issues, please open an issue in the repository or contact the development team.

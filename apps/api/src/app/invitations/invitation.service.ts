@@ -39,22 +39,21 @@ export class InvitationService {
       // Look up the user by email
       const invitedUser = await this.userLookupService.lookupUserByEmail(createInvitationDto.email);
       
-      // If user doesn't exist, we'll create the invitation anyway
-      // The user will be created when they accept the invitation
+      // Only allow invitations for existing users (no email invitations)
       if (!invitedUser) {
-        console.log('📧 User not found in database, will create invitation for new user:', createInvitationDto.email);
-      } else {
-        // Check if user is already a member
-        const { data: existingMember } = await this.supabaseService.getClient()
-          .from('organization_members')
-          .select('user_id')
-          .eq('organization_id', organizationId)
-          .eq('user_id', invitedUser.id)
-          .single();
+        throw new BadRequestException('User not found. Only existing users can be invited to organizations.');
+      }
 
-        if (existingMember) {
-          throw new BadRequestException('User is already a member of this organization');
-        }
+      // Check if user is already a member
+      const { data: existingMember } = await this.supabaseService.getClient()
+        .from('organization_members')
+        .select('user_id')
+        .eq('organization_id', organizationId)
+        .eq('user_id', invitedUser.id)
+        .single();
+
+      if (existingMember) {
+        throw new BadRequestException('User is already a member of this organization');
       }
 
       // Check if there's already a pending invitation
@@ -108,28 +107,25 @@ export class InvitationService {
 
       console.log('✅ Invitation created successfully:', invitation.id);
 
-      // Create in-app notification for the invited user (if they exist)
-      if (invitedUser) {
-        try {
-          const inviter = invitation.inviter;
-          const organization = invitation.organizations;
-          const inviterName = `${inviter.first_name} ${inviter.last_name}`;
-          
-          await this.userLookupService.createInvitationNotification(
-            invitedUser.id,
-            organizationId,
-            inviterName,
-            organization.name,
-            createInvitationDto.role
-          );
-          
-          console.log('✅ In-app notification created for existing user:', invitedUser.id);
-        } catch (notificationError) {
-          console.error('❌ Failed to create in-app notification:', notificationError);
-          // Don't fail the invitation creation if notification fails
-        }
-      } else {
-        console.log('📧 No in-app notification created - user will receive email invitation');
+      // Create in-app notification for the invited user
+      try {
+        const inviter = invitation.inviter;
+        const organization = invitation.organizations;
+        const inviterName = `${inviter.first_name} ${inviter.last_name}`;
+        
+        await this.userLookupService.createInvitationNotification(
+          invitedUser.id,
+          organizationId,
+          inviterName,
+          organization.name,
+          createInvitationDto.role,
+          invitation.id
+        );
+        
+        console.log('✅ In-app notification created for invited user:', invitedUser.id);
+      } catch (notificationError) {
+        console.error('❌ Failed to create in-app notification:', notificationError);
+        // Don't fail the invitation creation if notification fails
       }
 
       return this.mapInvitationToDto(invitation);
@@ -472,13 +468,192 @@ export class InvitationService {
       }
 
       console.log('✅ Invitation resent successfully');
-      // TODO: Send email with new token
+      
+      // Create new in-app notification for the invited user
+      try {
+        // Get invitation details to create notification
+        const { data: invitation } = await this.supabaseService.getClient()
+          .from('organization_invitations')
+          .select(`
+            *,
+            organizations (
+              id,
+              name,
+              description
+            ),
+            inviter:users!invited_by (
+              id,
+              first_name,
+              last_name,
+              email
+            )
+          `)
+          .eq('id', invitationId)
+          .single();
+
+        if (invitation) {
+          // Look up the invited user
+          const invitedUser = await this.userLookupService.lookupUserByEmail(invitation.invited_email);
+          if (invitedUser) {
+            const inviter = invitation.inviter;
+            const organization = invitation.organizations;
+            const inviterName = `${inviter.first_name} ${inviter.last_name}`;
+            
+            await this.userLookupService.createInvitationNotification(
+              invitedUser.id,
+              organizationId,
+              inviterName,
+              organization.name,
+              invitation.role,
+              invitation.id
+            );
+            
+            console.log('✅ Resend notification created for invited user:', invitedUser.id);
+          }
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to create resend notification:', notificationError);
+        // Don't fail the resend if notification fails
+      }
     } catch (error) {
       if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
         throw error;
       }
       console.error('❌ Resend invitation failed:', error);
       throw new BadRequestException('Failed to resend invitation');
+    }
+  }
+
+  /**
+   * Accept an invitation by ID (for in-app notifications)
+   */
+  async acceptInvitationById(organizationId: string, invitationId: string, userId: string): Promise<any> {
+    try {
+      // Get invitation details
+      const { data: invitation, error: invitationError } = await this.supabaseService.getClient()
+        .from('organization_invitations')
+        .select(`
+          *,
+          organizations (
+            id,
+            name,
+            description
+          ),
+          inviter:users!invited_by (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('id', invitationId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (invitationError || !invitation) {
+        throw new NotFoundException('Invitation not found');
+      }
+
+      // Check if invitation is expired
+      if (new Date(invitation.expires_at) < new Date()) {
+        throw new BadRequestException('Invitation has expired');
+      }
+
+      // Check if invitation is already accepted or declined
+      if (invitation.status !== 'pending') {
+        throw new BadRequestException(`Invitation has already been ${invitation.status}`);
+      }
+
+      // Add user to organization
+      const { error: memberError } = await this.supabaseService.createOrganizationMember({
+        user_id: userId,
+        organization_id: organizationId,
+        role: invitation.role,
+        invited_by: invitation.invited_by,
+        invitation_id: invitation.id,
+        joined_via: 'invitation',
+      });
+
+      if (memberError) {
+        console.error('❌ Failed to add user to organization:', memberError);
+        throw new BadRequestException('Failed to add user to organization');
+      }
+
+      // Mark invitation as accepted
+      const { error: updateError } = await this.supabaseService.getClient()
+        .from('organization_invitations')
+        .update({
+          status: 'accepted',
+          accepted_at: new Date(),
+        })
+        .eq('id', invitation.id);
+
+      if (updateError) {
+        console.error('❌ Failed to update invitation status:', updateError);
+        throw new BadRequestException('Failed to update invitation status');
+      }
+
+      console.log('✅ Invitation accepted successfully');
+
+      return {
+        message: 'Welcome to the organization!',
+        organization: {
+          id: invitation.organizations.id,
+          name: invitation.organizations.name,
+          description: invitation.organizations.description,
+        }
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error('❌ Accept invitation by ID failed:', error);
+      throw new BadRequestException('Failed to accept invitation');
+    }
+  }
+
+  /**
+   * Decline an invitation by ID (for in-app notifications)
+   */
+  async declineInvitationById(organizationId: string, invitationId: string, userId: string): Promise<void> {
+    try {
+      // Get invitation details
+      const { data: invitation, error: invitationError } = await this.supabaseService.getClient()
+        .from('organization_invitations')
+        .select('*')
+        .eq('id', invitationId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (invitationError || !invitation) {
+        throw new NotFoundException('Invitation not found');
+      }
+
+      // Check if invitation is already accepted or declined
+      if (invitation.status !== 'pending') {
+        throw new BadRequestException(`Invitation has already been ${invitation.status}`);
+      }
+
+      // Mark invitation as declined
+      const { error: updateError } = await this.supabaseService.getClient()
+        .from('organization_invitations')
+        .update({
+          status: 'declined',
+        })
+        .eq('id', invitation.id);
+
+      if (updateError) {
+        console.error('❌ Failed to decline invitation:', updateError);
+        throw new BadRequestException('Failed to decline invitation');
+      }
+
+      console.log('✅ Invitation declined successfully');
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error('❌ Decline invitation by ID failed:', error);
+      throw new BadRequestException('Failed to decline invitation');
     }
   }
 

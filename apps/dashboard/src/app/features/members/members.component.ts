@@ -151,7 +151,7 @@ interface Organization {
           </div>
         </div>
         
-        <div class="divide-y divide-gray-200">
+        <div class="max-h-96 overflow-y-auto space-y-4 pr-2">
           <div *ngFor="let member of filteredMembers" class="p-6 hover:bg-gray-50 transition-colors">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-4">
@@ -176,27 +176,16 @@ interface Organization {
                 
                 <!-- Actions -->
                 <div class="flex items-center space-x-2">
-                  <!-- Promote to Admin (Owner only) -->
-                  <button 
-                    *ngIf="canPromoteToAdmin(member)"
-                    (click)="promoteToAdmin(member)"
-                    class="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                    title="Promote to Admin">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
-                    </svg>
-                  </button>
-                  
-                  <!-- Demote from Admin (Owner only) -->
-                  <button 
-                    *ngIf="canDemoteFromAdmin(member)"
-                    (click)="demoteFromAdmin(member)"
-                    class="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                    title="Demote to Member">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
-                    </svg>
-                  </button>
+                  <!-- Role Dropdown (Owner only) -->
+                  <div *ngIf="canChangeRole(member)" class="relative">
+                    <select 
+                      [value]="member.role"
+                      (change)="updateMemberRole(member, $event)"
+                      class="text-sm border border-gray-300 rounded-lg px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
                   
                   <!-- Remove Member -->
                   <button 
@@ -300,7 +289,6 @@ interface Organization {
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               <option value="member">Member - Can create and edit tasks</option>
               <option value="admin">Admin - Can manage members and settings</option>
-              <option value="viewer">Viewer - Read-only access</option>
             </select>
           </div>
 
@@ -386,6 +374,17 @@ export class MembersComponent implements OnInit, OnDestroy {
         this.currentOrganization = workspaces.find(w => w.isCurrent) || workspaces[0] || null;
         
         if (this.currentOrganization) {
+          // Update user's role to match current organization
+          const currentUser = this.authService.getCurrentUser();
+          if (currentUser) {
+            const updatedUser = {
+              ...currentUser,
+              role: this.currentOrganization.role,
+              organizationId: this.currentOrganization.id
+            };
+            this.authService.updateCurrentUser(updatedUser);
+          }
+          
           // Load members and invitations for the current organization
           this.loadMembers();
           this.loadInvitations();
@@ -427,7 +426,8 @@ export class MembersComponent implements OnInit, OnDestroy {
     
     const subscription = this.invitationService.getInvitations(organizationId).subscribe({
       next: (invitations: InvitationDto[]) => {
-        this.invitations = invitations;
+        // Only show pending invitations (filter out accepted, declined, expired)
+        this.invitations = invitations.filter(inv => inv.status === 'pending');
       },
       error: (error) => {
         console.error('Error loading invitations:', error);
@@ -449,6 +449,18 @@ export class MembersComponent implements OnInit, OnDestroy {
     const subscription = this.workspaceService.switchWorkspace(org.id).subscribe({
       next: () => {
         this.currentOrganization = org;
+        
+        // Update user's role to match current organization
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          const updatedUser = {
+            ...currentUser,
+            role: org.role,
+            organizationId: org.id
+          };
+          this.authService.updateCurrentUser(updatedUser);
+        }
+        
         this.loadMembers();
         this.loadInvitations();
         
@@ -522,7 +534,7 @@ export class MembersComponent implements OnInit, OnDestroy {
         // Show success notification
         this.notificationService.success(
           'Invitation Sent!',
-          `Invitation sent to ${invitation.invitedEmail} for ${this.getRoleDisplayName(invitation.role)} role. They'll receive an email invitation.`,
+          `Invitation sent to ${invitation.invitedEmail} for ${this.getRoleDisplayName(invitation.role)} role. They'll receive an email invitation and in-app notification.`,
           { label: 'View Invitations', callback: () => this.scrollToInvitations() }
         );
       },
@@ -532,13 +544,24 @@ export class MembersComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         
         const message = error?.error?.message || '';
-        // If already a member of THIS org, treat as a no-op success for UX
+        
+        // Handle different error cases with idempotent UX
         if (message.toLowerCase().includes('already a member')) {
           this.closeInviteModal();
           this.notificationService.info(
             'Already a Member',
             `${this.inviteForm.email} is already part of this organization.`,
             { label: 'View Members', callback: () => this.scrollToMembers() }
+          );
+          return;
+        }
+        
+        if (message.toLowerCase().includes('pending invitation already exists')) {
+          this.closeInviteModal();
+          this.notificationService.info(
+            'Invitation Already Sent',
+            `A pending invitation already exists for ${this.inviteForm.email}.`,
+            { label: 'View Invitations', callback: () => this.scrollToInvitations() }
           );
           return;
         }
@@ -593,8 +616,14 @@ export class MembersComponent implements OnInit, OnDestroy {
   }
 
   // Member actions
-  promoteToAdmin(member: Member): void {
-    if (!confirm(`Are you sure you want to promote ${member.firstName} ${member.lastName} to Admin?`)) return;
+  updateMemberRole(member: Member, event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const newRole = target.value as 'member' | 'admin';
+    
+    // Don't do anything if role hasn't changed
+    if (newRole === member.role) {
+      return;
+    }
     
     const organizationId = this.currentOrganization?.id;
     if (!organizationId) {
@@ -602,49 +631,33 @@ export class MembersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const subscription = this.memberManagementService.updateMemberRole(organizationId, member.id, { role: 'admin' }).subscribe({
-      next: () => {
-        this.notificationService.success(
-          'Member Promoted!',
-          `${member.firstName} ${member.lastName} has been promoted to Admin`,
-          { label: 'Refresh', callback: () => this.loadMembers() }
-        );
-      },
-      error: (error) => {
-        console.error('Error promoting member:', error);
-        this.notificationService.error(
-          'Promotion Failed',
-          'Failed to promote member. Please try again.',
-          { label: 'Retry', callback: () => this.promoteToAdmin(member) }
-        );
-      }
-    });
-    this.subscriptions.add(subscription);
-  }
-
-  demoteFromAdmin(member: Member): void {
-    if (!confirm(`Are you sure you want to demote ${member.firstName} ${member.lastName} to Member?`)) return;
+    const action = newRole === 'admin' ? 'promote' : 'demote';
+    const actionText = newRole === 'admin' ? 'promoted to Admin' : 'demoted to Member';
     
-    const organizationId = this.currentOrganization?.id;
-    if (!organizationId) {
-      this.notificationService.error('Error', 'No organization ID found');
-      return;
-    }
-
-    const subscription = this.memberManagementService.updateMemberRole(organizationId, member.id, { role: 'member' }).subscribe({
+    const subscription = this.memberManagementService.updateMemberRole(organizationId, member.id, { role: newRole }).subscribe({
       next: () => {
+        // Update the member in the local array immediately for instant UI feedback
+        const memberIndex = this.members.findIndex(m => m.id === member.id);
+        if (memberIndex !== -1) {
+          this.members[memberIndex].role = newRole;
+          this.filteredMembers = [...this.members]; // Trigger change detection
+        }
+        
         this.notificationService.success(
-          'Member Demoted!',
-          `${member.firstName} ${member.lastName} has been demoted to Member`,
+          'Role Updated!',
+          `${member.firstName} ${member.lastName} has been ${actionText}`,
           { label: 'Refresh', callback: () => this.loadMembers() }
         );
       },
       error: (error) => {
-        console.error('Error demoting member:', error);
+        console.error(`Error ${action}ing member:`, error);
+        // Revert the dropdown selection on error
+        target.value = member.role;
+        
         this.notificationService.error(
-          'Demotion Failed',
-          'Failed to demote member. Please try again.',
-          { label: 'Retry', callback: () => this.demoteFromAdmin(member) }
+          `${action === 'promote' ? 'Promotion' : 'Demotion'} Failed`,
+          `Failed to ${action} member. Please try again.`,
+          { label: 'Retry', callback: () => this.updateMemberRole(member, event) }
         );
       }
     });
@@ -686,16 +699,10 @@ export class MembersComponent implements OnInit, OnDestroy {
     return this.authService.hasRole(Role.OWNER) || this.authService.hasRole(Role.ADMIN);
   }
 
-  canPromoteToAdmin(member: Member): boolean {
-    // Only owners can promote members to admin
-    // Can only promote members (not admins or owners)
-    return this.authService.hasRole(Role.OWNER) && member.role === 'member';
-  }
-
-  canDemoteFromAdmin(member: Member): boolean {
-    // Only owners can demote admins to members
-    // Can only demote admins (not owners or members)
-    return this.authService.hasRole(Role.OWNER) && member.role === 'admin';
+  canChangeRole(member: Member): boolean {
+    // Only owners can change roles
+    // Can only change roles for members and admins (not owners)
+    return this.authService.hasRole(Role.OWNER) && member.role !== 'owner';
   }
 
   canRemoveMember(member: Member): boolean {
@@ -713,7 +720,7 @@ export class MembersComponent implements OnInit, OnDestroy {
       return true; // Owners can remove anyone except themselves
     }
     if (this.authService.hasRole(Role.ADMIN)) {
-      return member.role === 'member' || member.role === 'viewer'; // Admins can only remove members/viewers
+      return member.role === 'member'; // Admins can only remove members
     }
     return false;
   }
@@ -739,7 +746,6 @@ export class MembersComponent implements OnInit, OnDestroy {
       case 'owner': return 'Owner';
       case 'admin': return 'Admin';
       case 'member': return 'Member';
-      case 'viewer': return 'Viewer';
       default: return role;
     }
   }
@@ -749,7 +755,6 @@ export class MembersComponent implements OnInit, OnDestroy {
       case 'owner': return 'bg-purple-100 text-purple-800';
       case 'admin': return 'bg-blue-100 text-blue-800';
       case 'member': return 'bg-green-100 text-green-800';
-      case 'viewer': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   }

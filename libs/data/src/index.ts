@@ -9,5 +9,6 @@ export * from './lib/task.dto';
 export * from './lib/audit.dto';
 export * from './lib/api.dto';
 export * from './lib/invitation.dto';
+export * from './lib/notification.dto';
 
 // Configuration - Backend only (frontend uses Angular environment files)

@@ -5,7 +5,7 @@
 export enum OrganizationRole {
   OWNER = 'owner',
   ADMIN = 'admin',
-  VIEWER = 'viewer'
+  MEMBER = 'member'
 }
 
 export interface OrganizationDto {

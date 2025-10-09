@@ -36,4 +36,15 @@ export class InvitationService {
   getInvitationByToken(token: string): Observable<InvitationDto> {
     return this.http.get<InvitationDto>(`${this.apiUrl}/invitations/${token}`);
   }
+
+  // Accept an invitation by ID
+  acceptInvitationById(organizationId: string, invitationId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/organizations/${organizationId}/invitations/${invitationId}/accept`, {});
+  }
+
+  // Decline an invitation by ID
+  declineInvitationById(organizationId: string, invitationId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/organizations/${organizationId}/invitations/${invitationId}/decline`, {});
+  }
 }
+

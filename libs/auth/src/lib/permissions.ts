@@ -30,7 +30,6 @@ export enum Role {
   OWNER = 'owner',
   ADMIN = 'admin',
   MEMBER = 'member',
-  VIEWER = 'viewer',
 }
 
 // Role-Permission mapping
@@ -54,12 +53,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.ORG_READ,
     Permission.TASK_READ, Permission.TASK_CREATE, Permission.TASK_UPDATE,
     Permission.PROJECT_READ, Permission.PROJECT_CREATE, Permission.PROJECT_UPDATE,
-  ],
-  [Role.VIEWER]: [
-    Permission.USER_READ,
-    Permission.ORG_READ,
-    Permission.TASK_READ,
-    Permission.PROJECT_READ,
   ],
 };
 

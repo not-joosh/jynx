@@ -3,12 +3,10 @@
 // ============================================================================
 
 export enum TaskStatus {
-  DRAFT = 'draft',
   TODO = 'todo',
   IN_PROGRESS = 'in_progress',
-  REVIEW = 'review',
-  DONE = 'done',
-  ARCHIVED = 'archived'
+  BLOCKED = 'blocked',
+  COMPLETED = 'completed'
 }
 
 export enum TaskPriority {

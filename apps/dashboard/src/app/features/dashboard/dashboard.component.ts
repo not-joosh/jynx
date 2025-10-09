@@ -1,12 +1,15 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserDto, TaskDto } from '@challenge/data';
+import { UserDto, TaskDto, TaskStatus, TaskPriority } from '@challenge/data';
 import { StringUtils, DateUtils } from '@challenge/utils';
 import { environment } from '../../../environments/environment';
 import { AngularAuthService, Permission, Role } from '@challenge/auth/frontend';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { TaskService } from '../../services/task.service';
+import { MembersService } from '../../services/members.service';
+import { WorkspaceService } from '../../services/workspace.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -19,6 +22,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // RBAC enums for template usage
   Permission = Permission;
   Role = Role;
+  TaskStatus = TaskStatus;
+  TaskPriority = TaskPriority;
 
   configLoaded = !!environment.supabase.url;
   sampleString = StringUtils.capitalize('hello world');
@@ -27,76 +32,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isAuthenticated = false;
   private userSubscription: Subscription = new Subscription();
 
-  // Mock data for the new dashboard
+  // Real data for the dashboard
   quickStats = {
-    totalTasks: 24,
-    completedTasks: 18,
-    inProgressTasks: 6,
-    teamMembers: 5
+    totalTasks: 0,
+    completedTasks: 0,
+    inProgressTasks: 0,
+    teamMembers: 0
   };
 
-  recentTasks: TaskDto[] = [
-    {
-      id: '1',
-      title: 'Design new landing page',
-      description: 'Create a modern landing page design',
-      status: 'in_progress' as any,
-      priority: 'high' as any,
-      organizationId: '1',
-      creatorId: '1',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      updatedAt: new Date()
-    },
-    {
-      id: '2',
-      title: 'Update user documentation',
-      description: 'Revise the user guide with new features',
-      status: 'todo' as any,
-      priority: 'medium' as any,
-      organizationId: '1',
-      creatorId: '1',
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-      updatedAt: new Date()
-    },
-    {
-      id: '3',
-      title: 'Fix authentication bug',
-      description: 'Resolve login issue on mobile devices',
-      status: 'completed' as any,
-      priority: 'high' as any,
-      organizationId: '1',
-      creatorId: '1',
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      updatedAt: new Date()
-    }
-  ];
-
-  teamActivities = [
-    {
-      user: 'John Doe',
-      description: 'Completed task "Fix authentication bug"',
-      time: '2 hours ago'
-    },
-    {
-      user: 'Sarah Wilson',
-      description: 'Created new task "Design new landing page"',
-      time: '4 hours ago'
-    },
-    {
-      user: 'Mike Chen',
-      description: 'Updated project documentation',
-      time: '6 hours ago'
-    },
-    {
-      user: 'Emily Davis',
-      description: 'Joined the team',
-      time: '1 day ago'
-    }
-  ];
+  recentTasks: TaskDto[] = [];
+  loading = true;
 
   constructor(
     public authService: AngularAuthService,
-    private router: Router
+    private router: Router,
+    private taskService: TaskService,
+    private membersService: MembersService,
+    private workspaceService: WorkspaceService
   ) {}
 
   ngOnInit(): void {
@@ -104,15 +56,74 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isAuthenticated = this.authService.isAuthenticated();
+      
+      if (this.isAuthenticated) {
+        this.loadDashboardData();
+      }
     });
 
     // Also get current user immediately
     this.currentUser = this.authService.getCurrentUser();
     this.isAuthenticated = this.authService.isAuthenticated();
+    
+    if (this.isAuthenticated) {
+      this.loadDashboardData();
+    }
   }
 
   ngOnDestroy(): void {
     this.userSubscription.unsubscribe();
+  }
+
+  loadDashboardData(): void {
+    this.loading = true;
+    
+    // Load organizations first
+    this.workspaceService.getUserWorkspaces().subscribe({
+      next: (workspaces) => {
+        if (workspaces.length > 0) {
+          const currentOrg = workspaces[0]; // Use first organization
+          this.loadTasksAndMembers(currentOrg.id);
+        } else {
+          this.loading = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error loading workspaces:', error);
+        this.loading = false;
+      }
+    });
+  }
+
+  loadTasksAndMembers(organizationId: string): void {
+    // Load tasks
+    this.taskService.getTasks().subscribe({
+      next: (tasks) => {
+        this.recentTasks = tasks.slice(0, 5); // Get 5 most recent tasks
+        this.updateQuickStats(tasks);
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading tasks:', error);
+        this.loading = false;
+      }
+    });
+
+    // Load members
+    this.membersService.getOrganizationMembers().subscribe({
+      next: (members) => {
+        this.quickStats.teamMembers = members.length;
+      },
+      error: (error) => {
+        console.error('Error loading members:', error);
+      }
+    });
+  }
+
+  updateQuickStats(tasks: TaskDto[]): void {
+    this.quickStats.totalTasks = tasks.length;
+    this.quickStats.completedTasks = tasks.filter(task => task.status === TaskStatus.COMPLETED).length;
+    this.quickStats.inProgressTasks = tasks.filter(task => task.status === TaskStatus.IN_PROGRESS).length;
   }
 
   onUserAction() {
@@ -129,46 +140,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     console.log('User:', user);
   }
 
-  onTaskAction() {
-    console.log('Task action clicked!');
-    // Example of using the shared DTOs
-    const task: TaskDto = {
-      id: '1',
-      title: 'Sample Task',
-      description: 'This is a sample task',
-      status: 'todo' as any,
-      priority: 'medium' as any,
-      organizationId: '1',
-      creatorId: '1',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    console.log('Task:', task);
-  }
-
-  onLogout() {
-    this.authService.logout();
-    this.router.navigate(['/auth/login']);
-  }
-
-  onAdminAction() {
-    console.log('Admin action clicked!');
-    this.router.navigate(['/admin']);
-  }
-
   onCreateTask() {
     console.log('Create task clicked!');
-    // Navigate to task creation or open modal
+    this.router.navigate(['/tasks']);
   }
 
   onTeamAction() {
     console.log('Team management clicked!');
-    // Navigate to team management
+    this.router.navigate(['/members']);
   }
 
   openInviteModal() {
     console.log('Open invite modal clicked!');
-    // Open invitation modal
+    this.router.navigate(['/members']);
   }
 
   formatDate(date: Date): string {
@@ -191,9 +175,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'todo': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  }
-
-  getActivityInitials(user: string): string {
-    return user.split(' ').map(name => name[0]).join('').toUpperCase();
   }
 }

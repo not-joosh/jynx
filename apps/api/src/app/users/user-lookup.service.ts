@@ -65,7 +65,8 @@ export class UserLookupService {
     organizationId: string,
     inviterName: string,
     organizationName: string,
-    role: string
+    role: string,
+    invitationId: string
   ): Promise<void> {
     try {
       const { error } = await this.supabaseService.getClient()
@@ -77,6 +78,7 @@ export class UserLookupService {
           message: `${inviterName} invited you to join ${organizationName} as a ${role}`,
           data: {
             organizationId,
+            invitationId,
             inviterName,
             organizationName,
             role,

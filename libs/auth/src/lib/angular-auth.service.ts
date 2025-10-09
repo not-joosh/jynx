@@ -128,6 +128,13 @@ export class AngularAuthService {
   }
 
   /**
+   * Update the current user (used when switching organizations)
+   */
+  updateCurrentUser(updatedUser: UserDto): void {
+    this.currentUserSubject.next(updatedUser);
+  }
+
+  /**
    * Simple permission check using the modular function
    */
   hasPermission(permission: Permission, resourceOwnerId?: string): boolean {
@@ -137,7 +144,7 @@ export class AngularAuthService {
       return false;
     }
     
-    const userRole = (currentUser.role as Role) || Role.VIEWER;
+    const userRole = (currentUser.role as Role) || Role.MEMBER;
     
     console.log('🔍 Permission check - User role:', userRole, 'Required permission:', permission);
     const hasPerm = hasPermission(userRole, permission, resourceOwnerId);
@@ -159,11 +166,21 @@ export class AngularAuthService {
     console.log('🔍 Current user object:', currentUser);
     console.log('🔍 Looking for role:', role);
     
-    const userRole = (currentUser.role as Role) || Role.VIEWER;
+    const userRole = (currentUser.role as Role) || Role.MEMBER;
     
     console.log('🔍 Detected user role:', userRole);
-    console.log('🔍 Role match:', userRole === role);
     
-    return userRole === role;
+    // Implement role hierarchy: OWNER > ADMIN > MEMBER
+    // Higher roles have all permissions of lower roles
+    const roleHierarchy = {
+      [Role.OWNER]: [Role.OWNER, Role.ADMIN, Role.MEMBER],
+      [Role.ADMIN]: [Role.ADMIN, Role.MEMBER],
+      [Role.MEMBER]: [Role.MEMBER]
+    };
+    
+    const hasRole = roleHierarchy[userRole]?.includes(role) || false;
+    console.log('🔍 Role hierarchy check:', hasRole);
+    
+    return hasRole;
   }
 }

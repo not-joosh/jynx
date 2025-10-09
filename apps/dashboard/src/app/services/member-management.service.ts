@@ -34,3 +34,4 @@ export class MemberManagementService {
     return this.http.get<any>(`${this.apiUrl}/organizations/${organizationId}/members/${userId}`);
   }
 }
+

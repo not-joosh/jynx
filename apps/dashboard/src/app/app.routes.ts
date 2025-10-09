@@ -31,6 +31,10 @@ export const appRoutes: Route[] = [
       {
         path: 'analytics',
         loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent)
+      },
+      {
+        path: 'notifications',
+        loadComponent: () => import('./features/notifications/notifications-inbox.component').then(m => m.NotificationsInboxComponent)
       }
     ]
   },
@@ -76,6 +80,17 @@ export const appRoutes: Route[] = [
       {
         path: '',
         loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent)
+      }
+    ]
+  },
+  {
+    path: 'notifications',
+    loadComponent: () => import('./features/dashboard/dashboard-layout.component').then(m => m.DashboardLayoutComponent),
+    canActivate: [AngularAuthGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/notifications/notifications-inbox.component').then(m => m.NotificationsInboxComponent)
       }
     ]
   },

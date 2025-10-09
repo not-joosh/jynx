@@ -78,7 +78,7 @@ export class TaskService {
     const tasks = this.getCurrentTasks();
     return {
       total: tasks.length,
-      completed: tasks.filter(t => t.status === TaskStatus.DONE).length,
+      completed: tasks.filter(t => t.status === TaskStatus.COMPLETED).length,
       inProgress: tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length,
       todo: tasks.filter(t => t.status === TaskStatus.TODO).length
     };
