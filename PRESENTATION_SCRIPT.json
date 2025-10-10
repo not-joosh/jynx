@@ -1,0 +1,142 @@
+{
+  "presentation_script": {
+    "title": "Jynx Task Management System - Technical Evaluation",
+    "duration": "15-20 minutes",
+    "sections": [
+      {
+        "section": "Introduction & Overview",
+        "duration": "2 minutes",
+        "talking_points": [
+          "Hi, I'm presenting Jynx, a comprehensive task management system I built using Angular and NestJS",
+          "The system features role-based access control (RBAC) with JWT authentication - no mock auth used",
+          "Built as an NX monorepo for optimal code sharing and maintainability",
+          "Let me walk you through the key technical achievements and challenges"
+        ]
+      },
+      {
+        "section": "RBAC Implementation - The Biggest Challenge",
+        "duration": "6 minutes",
+        "talking_points": [
+          "RBAC was by far the most challenging part of this project",
+          "I implemented a three-tier hierarchy: OWNER > ADMIN > MEMBER - no VIEWER role because I interpreted this as a multi-tenant application where everyone needs some level of task management capability",
+          "The technical complexity came from role inheritance logic - owners can do everything admins can do, admins can do everything members can do",
+          "I created custom NestJS guards using the @Injectable decorator that implement CanActivate interface",
+          "The guards use reflection to get required roles from method decorators like @Roles(Role.ADMIN)",
+          "JWT token verification happens first, then role checking - the token contains the user's role in the payload",
+          "Task visibility is scoped using organization membership AND role - members only see tasks in their org, admins see all org tasks, owners see everything",
+          "The frontend uses Angular services to check permissions and dynamically render UI components",
+          "One major challenge was discovering Supabase auth service doesn't allow real email verification in development - I had to work around this limitation",
+          "The permission matrix is enforced at multiple layers: database constraints, API guards, and frontend UI state",
+          "This required careful coordination between backend permission logic and frontend state management"
+        ]
+      },
+      {
+        "section": "Architecture & Technical Implementation",
+        "duration": "4 minutes",
+        "talking_points": [
+          "Used NX monorepo structure with shared libraries for auth, data, and UI components",
+          "This ensures type safety across the entire stack - DTOs are shared between frontend and backend",
+          "JWT authentication using Supabase - real tokens, not mocks",
+          "All API requests include the JWT token in headers",
+          "Backend has comprehensive middleware for token verification and role checking",
+          "Database schema includes proper foreign key relationships and constraints",
+          "Implemented audit logging to track all user actions - owners and admins can view these logs"
+        ]
+      },
+      {
+        "section": "Architectural Decisions & Future Considerations",
+        "duration": "3 minutes",
+        "talking_points": [
+          "I chose RBAC over ABAC for this implementation, but in a production system, I'd recommend Attribute-Based Access Control (ABAC)",
+          "RBAC vs ABAC example: With RBAC, you check 'Is this user an admin?' With ABAC, you check 'Does this user have the admin attribute AND is it during business hours AND is the resource in their department?'",
+          "ABAC is more flexible - instead of hardcoded role permissions, you evaluate attributes like user department, time of day, resource sensitivity, etc.",
+          "For this project, I interpreted the scope as a multi-tenant task management system where everyone needs task capabilities - that's why I excluded VIEWER role",
+          "The three-tier hierarchy (OWNER > ADMIN > MEMBER) provides clear escalation paths while maintaining security",
+          "In a larger system, ABAC would allow more granular permissions without creating role explosion",
+          "The current RBAC implementation provides a solid foundation that could be extended to ABAC later"
+        ]
+      },
+      {
+        "section": "Frontend Features & UX",
+        "duration": "3 minutes",
+        "talking_points": [
+          "Built with Angular and TailwindCSS for responsive design",
+          "Drag-and-drop functionality for task reordering and status changes",
+          "Comprehensive filtering and sorting capabilities",
+          "Role-based UI - different users see different options based on their permissions",
+          "Real-time data synchronization between frontend and backend",
+          "Mobile-first responsive design that works seamlessly across devices",
+          "Clean, intuitive interface that adapts to user roles"
+        ]
+      },
+      {
+        "section": "Security & Testing",
+        "duration": "3 minutes",
+        "talking_points": [
+          "Comprehensive test coverage for RBAC logic, authentication, and API endpoints",
+          "All endpoints are protected with JWT verification and role-based guards",
+          "CORS properly configured for secure cross-origin requests",
+          "Password hashing using bcrypt",
+          "Input validation and sanitization on all user inputs",
+          "Audit trail for all critical operations",
+          "No sensitive data exposed in frontend - all business logic on backend"
+        ]
+      },
+      {
+        "section": "Challenges Overcome & Lessons Learned",
+        "duration": "3 minutes",
+        "talking_points": [
+          "RBAC complexity was the biggest challenge - getting the role inheritance logic right took significant effort",
+          "Supabase authentication limitation: Real email verification isn't available in development mode, which initially confused me about the auth flow",
+          "Coordinating permissions between frontend and backend required careful state management - had to ensure UI always reflected actual permissions",
+          "NX monorepo structure was initially complex but paid off in code reusability and type safety",
+          "JWT token management and refresh logic required careful implementation to handle token expiration gracefully",
+          "Drag-and-drop with role-based permissions was tricky - had to ensure users could only move tasks they had permission to modify",
+          "The modular architecture made it easy to add new features and maintain the codebase",
+          "Learning when to use RBAC vs ABAC - RBAC is simpler to implement but ABAC is more maintainable for complex systems"
+        ]
+      },
+      {
+        "section": "Demo & Conclusion",
+        "duration": "3 minutes",
+        "talking_points": [
+          "Let me show you the system in action",
+          "Login as different user types to demonstrate role-based access",
+          "Show task creation, editing, and deletion with permission checks",
+          "Demonstrate drag-and-drop functionality",
+          "Show audit logs for admin users",
+          "The system successfully implements all required features with a focus on security and user experience",
+          "The RBAC implementation ensures data security while providing an intuitive user experience",
+          "Thank you for your time - I'm happy to answer any questions about the implementation"
+        ]
+      }
+    ],
+    "demo_flow": [
+      "Login as Owner - show full access",
+      "Create a task and assign it to a member",
+      "Login as Member - show limited access",
+      "Try to edit someone else's task (should fail)",
+      "Edit own task successfully",
+      "Login as Admin - show admin capabilities",
+      "View audit logs",
+      "Show responsive design on mobile view"
+    ],
+    "key_technical_points": [
+      "RBAC with role inheritance (OWNER > ADMIN > MEMBER)",
+      "JWT authentication with Supabase (no mocks)",
+      "NX monorepo with shared libraries",
+      "Type-safe DTOs across frontend/backend",
+      "Comprehensive test coverage",
+      "Audit logging for security",
+      "Responsive drag-and-drop UI",
+      "Role-based UI components"
+    ],
+    "challenges_to_highlight": [
+      "RBAC complexity and role inheritance logic",
+      "Coordinating permissions between frontend and backend",
+      "JWT token management and refresh",
+      "Drag-and-drop with permission constraints",
+      "NX monorepo setup and configuration"
+    ]
+  }
+}

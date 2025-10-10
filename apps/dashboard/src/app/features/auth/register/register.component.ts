@@ -218,12 +218,6 @@ import { CreateUserDto } from '@challenge/data';
             </p>
           </div>
         </div>
-
-        <!-- Demo Credentials -->
-        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <h3 class="text-xs font-medium text-blue-900 mb-1">Demo Credentials</h3>
-          <p class="text-xs text-blue-700">Email: admin@jynx.com • Password: password</p>
-        </div>
       </div>
     </div>
   `,
