@@ -1,5 +1,5 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
+notes.md
 # compiled output
 dist
 tmp
@@ -44,3 +44,8 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 
 .angular
+ 
+# env files
+.env
+apps/api/.env
+apps/dashboard/public/env.local.js

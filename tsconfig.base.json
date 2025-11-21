@@ -14,7 +14,10 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@challenge/auth": ["libs/auth/src/index.ts"],
+      "@challenge/data": ["libs/data/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
