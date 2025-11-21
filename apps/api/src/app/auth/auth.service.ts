@@ -280,6 +280,77 @@ export class AuthService {
     }
   }
 
+  async confirmEmail(supabaseToken: string): Promise<AuthResponseDto> {
+    try {
+      // Validate Supabase token and get user info
+      const supabaseClient = this.supabaseService.getClient();
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(supabaseToken);
+
+      if (authError || !user) {
+        console.error('❌ Invalid Supabase token:', authError);
+        throw new UnauthorizedException('Invalid confirmation token');
+      }
+
+      console.log('✅ Supabase token validated, user ID:', user.id);
+
+      // Get user profile from database
+      let userProfile = null;
+      try {
+        const { data: profileData, error: profileError } = await this.supabaseService.getUserProfile(user.id);
+        
+        if (profileError) {
+          console.log('⚠️ User profile not found in database, using auth metadata');
+          // Fallback to auth metadata
+          userProfile = {
+            first_name: user.user_metadata?.first_name || 'User',
+            last_name: user.user_metadata?.last_name || 'Name',
+            role: 'owner',
+            current_organization_id: null
+          };
+        } else {
+          userProfile = profileData;
+          console.log('✅ User profile found in database');
+        }
+      } catch (dbError) {
+        console.log('⚠️ Database error, using auth data only:', dbError);
+        userProfile = {
+          first_name: user.user_metadata?.first_name || 'User',
+          last_name: user.user_metadata?.last_name || 'Name',
+          role: 'owner',
+          current_organization_id: null
+        };
+      }
+
+      // Generate our backend JWT token
+      const payload = { 
+        sub: user.id, 
+        email: user.email,
+        firstName: userProfile.first_name,
+        lastName: userProfile.last_name,
+        organizationId: userProfile.current_organization_id,
+        role: userProfile.role || 'owner'
+      };
+      
+      console.log('✅ Email confirmation successful, generating JWT token');
+      
+      return {
+        access_token: this.jwtService.sign(payload),
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: userProfile.first_name,
+          lastName: userProfile.last_name,
+        },
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      console.error('❌ Email confirmation failed:', error);
+      throw new UnauthorizedException('Email confirmation failed');
+    }
+  }
+
   async validateToken(payload: any): Promise<any> {
     try {
       const { data: userProfile } = await this.supabaseService.getUserProfile(payload.sub);

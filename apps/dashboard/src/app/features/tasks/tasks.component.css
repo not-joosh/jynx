@@ -111,13 +111,13 @@ textarea:focus {
   outline-offset: 2px;
 }
 
-/* Disabled state styling */
+/* Disabled state styling because it looked ugly lol*/
 button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-/* Custom scrollbar for long lists */
+/* Custom scrollbar for long lists, thank u material ui support lol*/
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;
 }

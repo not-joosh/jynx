@@ -8,7 +8,7 @@ import { Role, Permission, hasPermission } from './permissions';
   providedIn: 'root'
 })
 export class AngularAuthService {
-  private apiUrl = 'http://localhost:3000/api/v1'; // TODO: Move to environment
+  private apiUrl = 'http://localhost:3000/api/v1'; 
   private currentUserSubject = new BehaviorSubject<UserDto | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
@@ -66,6 +66,33 @@ export class AngularAuthService {
 
   resendConfirmation(email: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.apiUrl}/auth/resend-confirmation`, { email });
+  }
+
+  /**
+   * Exchange Supabase confirmation token for our backend JWT with full user data
+   */
+  confirmEmail(supabaseToken: string): Observable<AuthResponseDto> {
+    return this.http.post<AuthResponseDto>(`${this.apiUrl}/auth/confirm`, { 
+      supabaseToken
+    }).pipe(
+      tap(response => {
+        this.setToken(response.access_token);
+        
+        // Extract role from JWT token
+        const jwtPayload = JSON.parse(atob(response.access_token.split('.')[1]));
+        
+        const user: UserDto = {
+          ...response.user,
+          role: jwtPayload.role || 'owner',
+          organizationId: jwtPayload.organizationId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        console.log('🔍 Setting current user after confirmation:', user);
+        this.currentUserSubject.next(user);
+      })
+    );
   }
 
   logout(): void {

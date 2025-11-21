@@ -22,4 +22,9 @@ export class AuthController {
   async resendConfirmation(@Body() body: { email: string }): Promise<{ message: string }> {
     return this.authService.resendConfirmation(body.email);
   }
+
+  @Post('confirm')
+  async confirmEmail(@Body() body: { supabaseToken: string }): Promise<AuthResponseDto> {
+    return this.authService.confirmEmail(body.supabaseToken);
+  }
 }
